@@ -10,35 +10,35 @@ from django.db import models
 
 class MapVisRefugeedata(models.Model):
     # Field name made lowercase. Field renamed to remove unsuitable characters. Field renamed because it ended with '_'.
-    year_field = models.IntegerField(
-        db_column='Year                                                                                                                                              ', blank=True, null=True)
+    year = models.IntegerField(
+        db_column='Year', blank=True, null=True)
     # Field name made lowercase. Field renamed to remove unsuitable characters. Field renamed because it ended with '_'.
-    country_of_origin_field = models.TextField(
-        db_column='Country of origin                                           ', blank=True, null=True)
+    country_of_origin = models.TextField(
+        db_column='Country of origin', blank=True, null=True)
     # Field name made lowercase. Field renamed to remove unsuitable characters. Field renamed because it ended with '_'.
-    country_of_origin_iso_field = models.TextField(
-        db_column='Country of origin (ISO) ', blank=True, null=True)
+    country_of_origin_iso = models.TextField(
+        db_column='Country of origin (ISO)', blank=True, null=True)
     # Field name made lowercase. Field renamed to remove unsuitable characters. Field renamed because it ended with '_'.
-    country_of_asylum_field = models.TextField(
-        db_column='Country of asylum                                    ', blank=True, null=True)
+    country_of_asylum = models.TextField(
+        db_column='Country of asylum', blank=True, null=True)
     # Field name made lowercase. Field renamed to remove unsuitable characters. Field renamed because it ended with '_'.
-    country_of_asylum_iso_field = models.TextField(
-        db_column='Country of asylum (ISO) ', blank=True, null=True)
+    country_of_asylum_iso = models.TextField(
+        db_column='Country of asylum (ISO)', blank=True, null=True)
     # Field name made lowercase. Field renamed to remove unsuitable characters. Field renamed because it ended with '_'.
-    refugees_under_unhcr_s_mandate_field = models.IntegerField(
-        db_column="Refugees under UNHCR's mandate ", blank=True, null=True)
+    refugees_under_unhcr_s_mandate = models.IntegerField(
+        db_column="Refugees under UNHCR's mandate", blank=True, null=True)
     # Field name made lowercase. Field renamed to remove unsuitable characters. Field renamed because it ended with '_'.
-    asylum_seekers_field = models.IntegerField(
-        db_column='Asylum-seekers ', blank=True, null=True)
+    asylum_seekers = models.IntegerField(
+        db_column='Asylum-seekers', blank=True, null=True)
     # Field name made lowercase. Field renamed to remove unsuitable characters. Field renamed because it ended with '_'.
-    other_people_in_need_of_international_protection_field = models.TextField(
-        db_column='Other people in need of international protection ', blank=True, null=True)
+    other_people_in_need_of_international_protection = models.TextField(
+        db_column='Other people in need of international protection', blank=True, null=True)
     # Field name made lowercase. Field renamed to remove unsuitable characters. Field renamed because it ended with '_'.
-    stateless_persons_field = models.IntegerField(
-        db_column='Stateless persons ', blank=True, null=True)
+    stateless_persons = models.IntegerField(
+        db_column='Stateless persons', blank=True, null=True)
     # Field name made lowercase. Field renamed to remove unsuitable characters. Field renamed because it ended with '_'.
-    host_community_field = models.TextField(
-        db_column='Host Community ', blank=True, null=True)
+    host_community = models.TextField(
+        db_column='Host Community', blank=True, null=True)
     # Field name made lowercase. Field renamed to remove unsuitable characters.
     others_of_concern = models.IntegerField(
         db_column='Others of concern', blank=True, null=True)
