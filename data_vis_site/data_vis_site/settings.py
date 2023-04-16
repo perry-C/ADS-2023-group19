@@ -29,7 +29,7 @@ SECRET_KEY = "django-insecure-8om2jbvs+ir$c9^cn^6-z9-f(-sedw&j+&yw^epe%dt$yedr+6
 DEBUG = True
 
 ALLOWED_HOSTS = []
-
+    
 
 # Application definition
 
@@ -40,8 +40,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "map_vis.apps.MapVisConfig",
-    'django_plotly_dash.apps.DjangoPlotlyDashConfig',
+    "graph_vis.apps.GraphVisConfig",
+    'django_rename_app',
 
 ]
 
