@@ -2,12 +2,23 @@ import numpy as np
 import pandas as pd
 from sqlalchemy import create_engine
 
-# ---------------------------------------------------------------------------
-#                      Asylum-seeker data from 2015-2022
-# ---------------------------------------------------------------------------
+from .models import GraphVisRefugeeData
+
+'''
+This file contains functions of that deal with data 
+of Asylum-seeker data between 2015-2022 from UNHCR website 
+'''
 
 
-def construct_df(file_path):
+def convert_csv_to_df(file_path):
+    '''
+    Auxiliary function that converts csv file to pandas dataframe format,
+    used in combination with the "add_data" command to for constructing the database,
+    see "add_data.py" for more detail
+
+    NOTE: this is a brute-force implementation which only works for this particular dataset
+    '''
+
     with open(file_path) as fp:
         # Trim down the description text
         pop_df = pd.read_csv(fp, skip_blank_lines=True,
@@ -32,5 +43,5 @@ def construct_df(file_path):
 
     # Lastly, adding the indices for each record so they could be used as primary keys
     pop_df.insert(0, "id", range(1, len(pop_df) + 1))
-
+    
     return pop_df

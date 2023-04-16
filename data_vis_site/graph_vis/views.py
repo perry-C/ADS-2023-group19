@@ -9,10 +9,14 @@ from .models import GraphVisRefugeeData
 
 
 def index(request):
+
+    # Handle graph switching resquest
+
     try:
         selected_graph = request.POST['graph_select']
     except:
-        graph = make_bar_chart()
+        # Default case show world map
+        graph = make_world_map()
         return render(request, "graph_vis/index.html", context={"graph": graph})
 
     else:

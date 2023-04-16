@@ -1,5 +1,9 @@
-# README
+# Data Vis Site
 
-## TODO
+## Deployment
 
-- color coding countries according to numbers (refugees going in)
+```python
+python data_vis_site/manage.py runserver
+```
+
+then just click on the link shown in the prompt

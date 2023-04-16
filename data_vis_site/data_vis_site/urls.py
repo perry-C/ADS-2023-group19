@@ -17,6 +17,7 @@ from django.contrib import admin
 from django.urls import include, path
 
 urlpatterns = [
+    path('', include('graph_vis.urls')),
     path('graph_vis/', include('graph_vis.urls')),
     path("admin/", admin.site.urls),
 
