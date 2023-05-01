@@ -13,70 +13,58 @@ from keras.layers import Dense, LSTM
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 
-
-
 # Import the refugee dataframe
-df = pd.read_csv('Predicted_variable.csv')
-df["TotalRufugees"] = df["Refugees under UNHCR's mandate"]+df["Asylum-seekers"]
+df = pd.read_csv('clean_data.csv')
 
-# Import the features data
-df2 = pd.read_csv("gdp.csv")
-
-# Remove unnecessary columns
-df = df.drop(['Country of origin','Country of origin (ISO)', 'Country of asylum',"Refugees under UNHCR's mandate",
-       "Asylum-seekers", 'IDPs of concern to UNHCR',
-       'Other people in need of international protection', 'Stateless persons',
-       'Host Community', 'Others of concern'], axis=1)
-
-#Rename country of asylum - country
-df = df.rename(columns={'Country of asylum (ISO)': 'Country'})
-
-all_countries = []
-all_countries.extend(df2['Country'].iloc[:217])
-all_years = df2['Year'].unique().tolist()
-
-# create a new dataframe with all combinations of countries and years
-all_combinations = pd.DataFrame(list(itertools.product(all_countries, all_years)), columns=['Country', 'Year'])
-
-# merge the new dataframe with your existing dataset
-add_countries_data = pd.merge(all_combinations, df, on=['Country', 'Year'], how='left')
-
+# Remove time independent columns
+df = df.drop(['Border','Language1','Language2','dist','MEDC'], axis=1)
+       
 # replace any missing values with 0
-add_countries_data.fillna(0, inplace=True)
-df2.fillna(0, inplace=True)
+df.fillna(0, inplace=True)
 
-#Change the data so that 
-add_countries_data = add_countries_data.loc[(add_countries_data['Year'] >= 2006) & (add_countries_data['Year'] <= 2021)]
+# Sort the countries by country - years
+df = df.sort_values(['Country', 'Year'])
+print(df)
 
-df2 = df2.drop(df2.tail(2).index)
-df2 = df2.sort_values(['Country', 'Year'])
+# group the dataset by Country and count the number of unique years for each country
+year_counts = df.groupby('Country')['Year'].nunique()
 
-df_refugees = add_countries_data.sort_values(by=['Country','Year'])
-df_gdp = df2.sort_values(by=['Country','Year'])
+# filter the year_counts series to only include countries with a different number of years
+different_years = year_counts[year_counts != 13]
 
-merged_df = pd.merge(df_gdp, df_refugees[['Country', 'Year', 'TotalRufugees']], on=['Country', 'Year'], how='left')
+# print the list of countries with a different number of years
+print("Countries with a different number of years:")
+print(different_years.index.tolist())
 
+# remove the rows for the countries with a different number of years from the dataframe
+df = df[~df['Country'].isin(different_years.index)]
 
-filtered_df = merged_df.loc[merged_df.groupby('Country')['TotalRufugees'].transform('sum') > 0]
 # Convert the data frame into a numpy array for RNN
-filtered_array = pd.DataFrame.to_numpy(filtered_df)
+df_array = pd.DataFrame.to_numpy(df)
+print(df_array)
 
 # Features and samples
-X = filtered_array[:,[2,3,4,5]]
-y = filtered_array[:,6]
+time_dependent_features = df_array[:,[3,4,5,6]]
+proportion_refugees = df_array[:,2]
 
 # Scale the numpy data set - prep for RNN
 scaler = MinMaxScaler(feature_range=(0, 1))
-X = scaler.fit_transform(X)
-y = scaler.fit_transform(np.reshape(y, (-1, 1)))
+X = scaler.fit_transform(time_dependent_features)
+y = scaler.fit_transform(np.reshape(proportion_refugees, (-1, 1)))
 
 print(X.shape)
 print(y.shape)
+count = 1
+for i, country in enumerate(df['Country'].unique()):
+    num_countries = count 
+    count = count + 1
+
+count_2=1
+for i, country in enumerate(df['Year'].unique()):
+    time_steps = count_2
+    count_2 = count_2 +1
 
 # Set up samples and features for RNN
-num_countries = 106
-time_steps = 16
-
 X = np.reshape(X, (num_countries, time_steps, 4))
 y = np.reshape(y, (num_countries, time_steps, 1))
 
@@ -119,8 +107,8 @@ y_test = scaler.inverse_transform(y_test)
 
 # Calculate the mean squared error (MSE) for each country
 mse_by_country = {}
-for i, country in enumerate(filtered_df['Country'].unique()):
-    country_indices = np.where(filtered_df['Country'] == country)[0]
+for i, country in enumerate(df['Country'].unique()):
+    country_indices = np.where(df['Country'] == country)[0]
     mse = np.mean((y_test[country_indices] - y_pred[country_indices]) ** 2)
     mse_by_country[country] = mse
 
@@ -133,17 +121,11 @@ highest_accuracy_country = sorted_mse[-1][0]
 print(f"Highest accuracy country: {highest_accuracy_country}")
 print(f"Lowest accuracy country: {lowest_accuracy_country}")
 
-years_array = np.arange(2006, 2022)
+df=df.reset_index()
 
-filtered_df=filtered_df.reset_index()
+lowest_country_indices = df[df["Country"] == lowest_accuracy_country].index
+highest_country_indices = df[df["Country"] == highest_accuracy_country].index
 
-lowest_country_indices = filtered_df[filtered_df["Country"] == lowest_accuracy_country].index
-highest_country_indices = filtered_df[filtered_df["Country"] == highest_accuracy_country].index
-
-print(lowest_country_indices)
-print(highest_country_indices)
-print(filtered_df[lowest_country_indices[0]:lowest_country_indices[-1]+1])
-print(filtered_df[highest_country_indices[0]:highest_country_indices[-1]+1])
 years_array = np.arange(2006, 2022)
 
 plt.plot(years_array, y_test[lowest_country_indices[0]:lowest_country_indices[-1]+1])
