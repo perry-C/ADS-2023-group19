@@ -1,0 +1,146 @@
+"""Training RNN for forecasting refugee resettlement"""
+import pandas as pd
+import numpy as np
+import re
+import matplotlib.pyplot as plt
+import itertools
+from itertools import product
+
+import tensorflow as tf
+from keras.models import Sequential
+from keras.layers import Dense, LSTM, Dropout
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler
+
+# Import the refugee dataframe
+df = pd.read_csv('clean_data.csv')
+       
+# replace any missing values with 0
+df.fillna(0, inplace=True)
+
+# group the dataset by Country and count the number of unique years for each country
+year_counts = df.groupby('Country')['Year'].nunique()
+
+# filter the year_counts series to only include countries with a different number of years
+different_years = year_counts[year_counts != 16]
+
+# print the list of countries with a different number of years
+print("Countries with a different number of years:")
+print(different_years.index.tolist())
+
+# remove the rows for the countries with a different number of years from the dataframe
+df = df[~df['Country'].isin(different_years.index)]
+
+# Sort the countries by country - years
+df = df.sort_values(['Country', 'Year'])
+print(df)
+
+# Convert the data frame into a numpy array for RNN
+df_array = pd.DataFrame.to_numpy(df)
+print(df_array)
+
+# Features and samples
+time_dependent_features = df_array[:,[3,4,5,6,7,8,9,10,11]]
+proportion_refugees = df_array[:,2]
+
+# Scale the numpy data set - prep for RNN
+scaler = MinMaxScaler(feature_range=(0, 1))
+X = scaler.fit_transform(time_dependent_features)
+y = scaler.fit_transform(np.reshape(proportion_refugees, (-1, 1)))
+
+print(X.shape)
+print(y.shape)
+count = 1
+for i, country in enumerate(df['Country'].unique()):
+    num_countries = count 
+    count = count + 1
+
+count_2=1
+for i, country in enumerate(df['Year'].unique()):
+    time_steps = count_2
+    count_2 = count_2 +1
+
+# Set up samples and features for RNN
+X = np.reshape(X, (num_countries, time_steps, 9))
+y = np.reshape(y, (num_countries, time_steps, 1))
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
+
+# Define the RNN architecture
+model = Sequential()
+model.add(LSTM(64, input_shape=(X.shape[1], X.shape[2]), activation='linear', return_sequences=True))
+model.add(Dropout(0.5))
+model.add(LSTM(80, input_shape=(X.shape[1], X.shape[2]), activation="linear", return_sequences=True))
+model.add(Dropout(0.5))
+model.add(LSTM(80, input_shape=(X.shape[1], X.shape[2]), activation="linear", return_sequences=True))
+model.add(Dropout(0.5))
+model.add(Dense(8,activation="linear"))
+model.add(Dropout(0.5))
+model.add(Dense(1,activation="tanh"))
+
+# Optimizer for varying model learning rate 
+opt = tf.keras.optimizers.Adam(learning_rate=0.001)
+# Compile the model
+model.compile(optimizer=opt, loss='mse')
+
+# Fit the model
+history = model.fit(X_train, y_train, epochs=20, batch_size=16, steps_per_epoch = 4, validation_split=0.2)
+
+# Plot the validation loss and the loss against the epochs
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.legend(['Training Loss', 'Validation Loss'])
+plt.title('Training and Validation Loss comparison')
+plt.show()
+
+# Use the trained model to predict on the test data set
+y_pred = model.predict(X)
+
+y_pred = np.reshape(y_pred, (time_steps * X.shape[0],1))
+y_test = np.reshape(y, (time_steps * X.shape[0],1))
+
+y_pred = scaler.inverse_transform(y_pred)
+y_test = scaler.inverse_transform(y_test)
+
+# Calculate the mean squared error (MSE) for each country
+mse_by_country = {}
+for i, country in enumerate(df['Country'].unique()):
+    country_indices = np.where(df['Country'] == country)[0]
+    mse = np.mean((y_test[country_indices] - y_pred[country_indices]) ** 2)
+    mse_by_country[country] = mse
+
+# Sort the MSE values and get the countries with the highest and lowest accuracy
+sorted_mse = sorted(mse_by_country.items(), key=lambda x: x[1])
+lowest_error_country = sorted_mse[0][0]
+highest_error_country = sorted_mse[-1][0]
+
+# Print the countries with the highest and lowest accuracy
+print(f"Highest error prediction: {highest_error_country}")
+print(f"Lowest error prediction: {lowest_error_country}")
+
+df=df.reset_index()
+
+lowest_country_indices = df[df["Country"] == lowest_error_country].index
+highest_country_indices = df[df["Country"] == highest_error_country].index
+
+years_array = np.arange(2006, 2022)
+
+plt.plot(years_array, y_test[lowest_country_indices[0]:lowest_country_indices[-1]+1])
+plt.plot(years_array, y_pred[lowest_country_indices[0]:lowest_country_indices[-1]+1])
+plt.xlabel("Year")
+plt.ylabel("Afganistan Refugees")
+plt.legend(["Test Data", "Model Prediction"])
+plt.title(f"Lowest error of RNN prediction: {lowest_error_country}")
+plt.show()
+
+plt.plot(years_array, y_test[highest_country_indices[0]:highest_country_indices[-1]+1])
+plt.plot(years_array, y_pred[highest_country_indices[0]:highest_country_indices[-1]+1])
+plt.xlabel("Year")
+plt.ylabel("Afganistan Refugees")
+plt.legend(["Test Data", "Model Prediction"])
+plt.title(f"Highest error of RNN prediction: {highest_error_country}")
+plt.show()
