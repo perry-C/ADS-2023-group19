@@ -1,0 +1,155 @@
+"""Training RNN for forecasting refugee resettlement"""
+import pandas as pd
+import numpy as np
+import re
+import matplotlib.pyplot as plt
+import itertools
+from itertools import product
+
+import tensorflow as tf
+from keras.models import Sequential
+from keras.layers import Dense, LSTM
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler
+
+
+
+# Import the refugee dataframe
+df = pd.read_csv('Predicted_variable.csv')
+df["TotalRufugees"] = df["Refugees under UNHCR's mandate"]+df["Asylum-seekers"]
+
+# Import the features data
+df2 = pd.read_csv("gdp.csv")
+
+# Remove unnecessary columns
+df = df.drop(['Country of origin','Country of origin (ISO)', 'Country of asylum',"Refugees under UNHCR's mandate",
+       "Asylum-seekers", 'IDPs of concern to UNHCR',
+       'Other people in need of international protection', 'Stateless persons',
+       'Host Community', 'Others of concern'], axis=1)
+
+#Rename country of asylum - country
+df = df.rename(columns={'Country of asylum (ISO)': 'Country'})
+
+all_countries = []
+all_countries.extend(df2['Country'].iloc[:217])
+all_years = df2['Year'].unique().tolist()
+
+# create a new dataframe with all combinations of countries and years
+all_combinations = pd.DataFrame(list(itertools.product(all_countries, all_years)), columns=['Country', 'Year'])
+
+# merge the new dataframe with your existing dataset
+add_countries_data = pd.merge(all_combinations, df, on=['Country', 'Year'], how='left')
+
+# replace any missing values with 0
+add_countries_data.fillna(0, inplace=True)
+df2.fillna(0, inplace=True)
+
+#Change the data so that 
+add_countries_data = add_countries_data.loc[(add_countries_data['Year'] >= 2006) & (add_countries_data['Year'] <= 2021)]
+
+df2 = df2.drop(df2.tail(2).index)
+df2 = df2.sort_values(['Country', 'Year'])
+
+df_refugees = add_countries_data.sort_values(by=['Country','Year'])
+df_gdp = df2.sort_values(by=['Country','Year'])
+
+merged_df = pd.merge(df_gdp, df_refugees[['Country', 'Year', 'TotalRufugees']], on=['Country', 'Year'], how='left')
+
+
+
+
+filtered_df = merged_df.loc[merged_df.groupby('Country')['TotalRufugees'].transform('sum') > 0]
+filtered_df.to_csv('filtered.csv', index=False)
+# Convert the data frame into a numpy array for RNN
+filtered_array = pd.DataFrame.to_numpy(filtered_df)
+
+# Features and samples
+X = filtered_array[:,[2,3,4,5]]
+y = filtered_array[:,6]
+
+# Scale the numpy data set - prep for RNN
+scaler = MinMaxScaler(feature_range=(0, 1))
+X = scaler.fit_transform(X)
+y = scaler.fit_transform(np.reshape(y, (-1, 1)))
+
+print(X.shape)
+print(y.shape)
+
+# Set up samples and features for RNN
+num_countries = 106
+time_steps = 16
+
+X = np.reshape(X, (num_countries, time_steps, 4))
+y = np.reshape(y, (num_countries, time_steps, 1))
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
+
+# Define the RNN architecture
+model = Sequential()
+model.add(LSTM(64, input_shape=(X.shape[1], X.shape[2]), activation='tanh', return_sequences=True))
+model.add(LSTM(80, input_shape=(X.shape[1], X.shape[2]), activation="tanh", return_sequences=True))
+model.add(LSTM(80, input_shape=(X.shape[1], X.shape[2]), activation="tanh", return_sequences=True))
+model.add(Dense(8,activation="tanh"))
+model.add(Dense(1,activation="tanh"))
+
+# Optimizer for varying model learning rate 
+opt = tf.keras.optimizers.Adam(learning_rate=0.01)
+# Compile the model
+model.compile(optimizer=opt, loss='mse')
+
+# Fit the model
+history = model.fit(X_train, y_train, epochs=20, batch_size=16, steps_per_epoch = 4, validation_split=0.2)
+
+# Plot the validation loss and the loss against the epochs
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.legend(['Training Loss', 'Validation Loss'])
+plt.title('Training and Validation Loss comparison')
+plt.show()
+
+# Use the trained model to predict on the test data set
+y_pred = model.predict(X)
+
+y_pred = np.reshape(y_pred, (time_steps * X.shape[0],1))
+y_test = np.reshape(y, (time_steps * X.shape[0],1))
+
+y_pred = scaler.inverse_transform(y_pred)
+y_test = scaler.inverse_transform(y_test)
+
+# Calculate the mean squared error (MSE) for each country
+mse_by_country = {}
+for i, country in enumerate(filtered_df['Country'].unique()):
+    country_indices = np.where(filtered_df['Country'] == country)[0]
+    mse = np.mean((y_test[country_indices] - y_pred[country_indices]) ** 2)
+    mse_by_country[country] = mse
+
+# Sort the MSE values and get the countries with the highest and lowest accuracy
+sorted_mse = sorted(mse_by_country.items(), key=lambda x: x[1])
+lowest_accuracy_country = sorted_mse[0][0]
+highest_accuracy_country = sorted_mse[-1][0]
+
+# Print the countries with the highest and lowest accuracy
+print(f"Highest accuracy country: {highest_accuracy_country}")
+print(f"Lowest accuracy country: {lowest_accuracy_country}")
+
+years_array = np.arange(2006, 2022)
+
+plt.plot(years_array, y_test[1167-time_steps:1167])
+plt.plot(years_array, y_pred[1167-time_steps:1167])
+plt.xlabel("Year")
+plt.ylabel("Afganistan Refugees")
+plt.legend(["Test Data", "Model Prediction"])
+plt.title("Lowest accuracy of RNN: Netherlands (NDL)")
+plt.show()
+
+plt.plot(years_array, y_test[1258-time_steps:1258])
+plt.plot(years_array, y_pred[1258-time_steps:1258])
+plt.xlabel("Year")
+plt.ylabel("Afganistan Refugees")
+plt.legend(["Test Data", "Model Prediction"])
+plt.title("Highest accuracy of RNN: Pakistan (PAK)")
+plt.show()
