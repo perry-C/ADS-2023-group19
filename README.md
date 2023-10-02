@@ -1,8 +1,8 @@
 # ADS-2023-group19
 
-## Data Vis Site
+## Data Visualisation
 
-A visualisation tool for viewing actual and predicted Afghanistan refugee results, built based on Django and Plotly.
+A visualisation tool for displaying actual/predicted (random forest) Afghanistan refugee movement in recent years, built based on **Django** and **Plotly**.
 
 ### Deployment
 
@@ -10,8 +10,8 @@ A visualisation tool for viewing actual and predicted Afghanistan refugee result
 python data_vis_site/manage.py runserver
 ```
 
-then just click on the link shown in the prompt
+![image](https://github.com/perry-C/ADS-2023-group19/assets/55983397/73ee4f7b-43a1-429d-ac44-8034ee1ff62a)
 
 ## RNN
 
-A LSTM (Long Short Term Memory) implementation of RNN for the prediction of refugee trends   
+An attempt to predict refugee movement using **LSTM (Long Short Term Memory)** variant of RNN
